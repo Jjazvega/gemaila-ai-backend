@@ -1,92 +1,49 @@
-[index.html.html](https://github.com/user-attachments/files/24064138/index.html.html)[script.js.js](https://github.com/user-attachments/files/24064126/script.js.js)[README.md](https://github.com/user-attachments/files/24064111/README.md)
-# Gemaila Backend
-Servidor oficial para el sistema empresarial inteligente GEMAILLA IA.
+# Gemailla AI Backend
 
-## Requisitos
-- Node.js
-- npm[server.js.js](https://github.com/user-attachments/files/24064130/server.js.js)import express from "express";
-import cors from "cors";
-const app = express();[Uploa<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GEMAILLA AI</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <header class="header">
-    <h1>GEMAILLA AI</h1>
-    <p>Asistente Inteligente — Proyecto Real</p>
-  </header>
-  <main class="main">
-    <section class="chat-box">
-      <div id="messages" class="messages"></div>
-      <textarea id="userInput" placeholder="Escribe tu mensaje..."></textarea>
-      <button id="sendBtn">Enviar</button>
-    </section>
-  </main>
-  <script src="script.js"></script>
-</body>
-</html>ding index.html.html…]()
+Backend FastAPI preparado para integrarse con Firebase Authentication, Firestore y Firebase Storage sin romper una arquitectura por capas.
 
-app.use(cors());
-app.use(express.json());
-app.post("/api/chat", (req, res) => {
-  const { message } = req.body;
-  let reply = "";
-  if (!message) reply = "No entendí tu mensaje.";
-  else if (message.toLowerCase().includes("hola")) reply = "¡Hola Gilda! ¿Lista para avanzar con GEMAILLA AI?";
-  else if (message.toLowerCase().includes("gemaila")) reply = "GEMAILLA AI es tu asistente conectado a un backend real.";
-  else reply = `Recibí tu mensaje: ${message}`;
-  res.json({ reply });
-});
-app.listen(3000, () => console.log("Servidor GEMAILLA AI corriendo en http://localhost:3000"));
+## Estructura
 
-- OpenAI API Key (en archivo .env)
+- `backend/app/api/routes`: endpoints HTTP.
+- `backend/app/dependencies`: dependencias de autenticación.
+- `backend/app/core`: configuración, logging y clientes Firebase.
+- `backend/app/services`: servicios de autenticación, persistencia y storage.
+- `backend/app/schemas`: modelos de respuesta y dominio.
+
+## Variables de entorno
+
+Copia `.env.example` a `.env` y completa:
+
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_STORAGE_BUCKET`
+- `FIREBASE_SERVICE_ACCOUNT_PATH` o `FIREBASE_SERVICE_ACCOUNT_JSON`
+- `FIRESTORE_USERS_COLLECTION`
+- `FIRESTORE_DOCUMENTS_COLLECTION`
 
 ## Instalación
-Para instalar depe{[Uploadingdocument.getElementById("sendBtn").addEventListener("click", sendMessage);
-function addMessage(who, text) {
-  const box = document.getElementById("messages");
-  const div = document.createElement("div");
-  div.className = who === "user" ? "user-msg" : "bot-msg";
-  div.textContent = text;
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
-}
-async function sendMessage() {
-  const input = document.getElementById("userInput");
-  const msg = input.value.trim();
-  if (!msg) return;
-  addMessage("user", msg);
-  input.value = "";
-  try {
-    const res = await fetch("http://localhost:3000/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: msg })
-    });
-    const data = await res.json();
-    addMessage("bot", data.reply);
-  } catch (e) {
-    addMessage("bot", "Error al conectar con el servidor.");
-  }
-} script.js.js…]()
 
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "node",
-            "request": "launch",
-            "name": "Ejecutar el script start",
-            "runtimeExecutable": "npm",
-            "runtimeArgs": ["run", "start"],
-            "cwd": "${workspaceFolder}/01-banckend",
-            "console": "integratedTerminal"
-        }
-    ]
-}
-[package.json](https://github.com/user-attachments/files/24064121/package.json)
-ndencias:
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
 
+## Seguridad aplicada
+
+- Validación de Firebase ID token con verificación del Admin SDK y comprobación explícita de `issuer`, `audience` y `subject`.
+- `/api/me` y `/api/documents` están protegidos con `Authorization: Bearer <firebase-id-token>`.
+- Los archivos ya no se exponen como públicos; se genera una signed URL temporal para acceso controlado.
+- Los errores de autenticación, persistencia y storage se devuelven con códigos consistentes y logging estructurado.
+
+## Endpoints
+
+- `GET /health`: healthcheck.
+- `GET /api/me`: endpoint protegido que valida el Firebase ID token y devuelve el usuario autenticado.
+- `POST /api/documents`: endpoint protegido que sube archivos a Firebase Storage y guarda metadatos en Firestore.
+
+## Persistencia en Firestore
+
+- La colección de usuarios se actualiza automáticamente al validar un token.
+- La colección de documentos almacena propietario, tenant, proyecto, tipo de contexto, ruta en storage, signed URL y vencimiento de acceso.
