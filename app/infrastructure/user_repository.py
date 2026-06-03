@@ -1,68 +1,47 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Integer, String, UniqueConstraint, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from google.cloud.firestore import Client
 
 from app.domain.user import User
 
 
-class Base(DeclarativeBase):
-    pass
-
-
-class UserModel(Base):
-    __tablename__ = "users"
-    __table_args__ = (UniqueConstraint("tenant_id", "email", name="uq_users_tenant_email"),)
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    email: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
-    tenant_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-
-
 class UserRepository:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Client):
         self.db = db
 
-    async def get_by_email(self, email: str, tenant_id: str) -> User | None:
-        stmt = select(UserModel).where(UserModel.email == email, UserModel.tenant_id == tenant_id)
-        result = await self.db.execute(stmt)
-        row = result.scalar_one_or_none()
-        if row is None:
-            return None
+    async def upsert(self, uid: str, email: str, tenant_id: str) -> User:
+        doc_ref = self.db.collection("users").document(uid)
+        now = datetime.now(timezone.utc)
+
+        current = doc_ref.get()
+        if not current.exists:
+            payload = {
+                "uid": uid,
+                "email": email,
+                "tenant_id": tenant_id,
+                "created_at": now,
+                "updated_at": now,
+            }
+            doc_ref.set(payload)
+            return User(uid=uid, email=email, tenant_id=tenant_id, created_at=now)
+
+        doc_ref.set({"email": email, "tenant_id": tenant_id, "updated_at": now}, merge=True)
+        current_data = current.to_dict() or {}
         return User(
-            id=row.id,
-            email=row.email,
-            tenant_id=row.tenant_id,
-            hashed_password=row.hashed_password,
-            created_at=row.created_at,
+            uid=uid,
+            email=email,
+            tenant_id=tenant_id,
+            created_at=current_data.get("created_at"),
         )
 
-    async def get_by_id(self, user_id: int, tenant_id: str) -> User | None:
-        stmt = select(UserModel).where(UserModel.id == user_id, UserModel.tenant_id == tenant_id)
-        result = await self.db.execute(stmt)
-        row = result.scalar_one_or_none()
-        if row is None:
+    async def get_by_uid(self, uid: str) -> User | None:
+        doc = self.db.collection("users").document(uid).get()
+        if not doc.exists:
             return None
+        data = doc.to_dict() or {}
         return User(
-            id=row.id,
-            email=row.email,
-            tenant_id=row.tenant_id,
-            hashed_password=row.hashed_password,
-            created_at=row.created_at,
-        )
-
-    async def create(self, email: str, tenant_id: str, hashed_password: str) -> User:
-        user = UserModel(email=email, tenant_id=tenant_id, hashed_password=hashed_password)
-        self.db.add(user)
-        await self.db.commit()
-        await self.db.refresh(user)
-        return User(
-            id=user.id,
-            email=user.email,
-            tenant_id=user.tenant_id,
-            hashed_password=user.hashed_password,
-            created_at=user.created_at,
+            uid=data.get("uid", uid),
+            email=data.get("email", ""),
+            tenant_id=data.get("tenant_id", ""),
+            created_at=data.get("created_at"),
         )

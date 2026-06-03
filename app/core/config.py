@@ -7,11 +7,8 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "DEV"
     DEBUG: bool = True
 
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/fastapi_auth"
-
-    JWT_SECRET_KEY: str = "change-this-secret-key"
-    JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRE_MINUTES: int = 60
+    FIREBASE_PROJECT_ID: str = ""
+    FIREBASE_CREDENTIALS_PATH: str = "./serviceAccountKey.json"
 
     DEFAULT_TENANT_ID: str = "public"
     LOG_LEVEL: str = "INFO"

@@ -5,10 +5,9 @@ from fastapi import FastAPI
 
 from app.api.routes_auth import router as auth_router
 from app.core.config import settings
-from app.core.database import engine
 from app.core.exceptions import register_exception_handlers
+from app.core.firebase import initialize_firebase
 from app.core.logging import configure_logging
-from app.infrastructure.user_repository import Base
 
 
 @asynccontextmanager
@@ -16,8 +15,7 @@ async def lifespan(_: FastAPI):
     configure_logging()
     logger = logging.getLogger("app.startup")
     logger.info("starting application", extra={"environment": settings.ENVIRONMENT})
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    initialize_firebase()
     yield
     logger.info("shutting down application")
 
